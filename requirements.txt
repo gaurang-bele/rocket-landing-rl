@@ -1,0 +1,8 @@
+gymnasium[box2d]>=1.0.0
+stable-baselines3>=2.3.0
+torch
+pygame>=2.5.0
+tensorboard
+matplotlib
+numpy
+scipy
