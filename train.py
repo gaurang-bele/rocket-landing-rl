@@ -121,12 +121,20 @@ def train(
         verbose=1,
     )
 
+    # Check if tqdm and rich are available for the progress bar
+    try:
+        import tqdm  # noqa: F401
+        import rich  # noqa: F401
+        use_progress_bar = True
+    except ImportError:
+        use_progress_bar = False
+
     print("\nStarting reinforcement learning loop...")
     try:
         model.learn(
             total_timesteps=total_timesteps,
             callback=[curriculum_cb, eval_cb, checkpoint_cb],
-            progress_bar=True
+            progress_bar=use_progress_bar
         )
     finally:
         train_env.close()

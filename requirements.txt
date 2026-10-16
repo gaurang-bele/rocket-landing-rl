@@ -6,3 +6,5 @@ tensorboard
 matplotlib
 numpy
 scipy
+tqdm
+rich
