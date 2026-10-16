@@ -1,6 +1,11 @@
 """
 Master CLI Entry Point for Autonomous Rocket Landing RL.
-Supports training, live interactive avionics HUD demo, stress benchmark, and anti-hacking tests.
+Supports:
+- train: Multi-worker PPO reinforcement learning with curriculum.
+- demo: Live interactive 1200x720 SpaceX avionics HUD window at 50 FPS.
+- record: Headless high-def MP4 video export for LinkedIn / showcase.
+- benchmark: 4-scenario Sim-to-Real stress benchmark.
+- test: Anti-reward-hacking unit tests.
 """
 
 import sys
@@ -50,18 +55,18 @@ def run_demo(
     env_fn = make_rocket_env(render_mode="rgb_array", curriculum_level=curriculum_level)
     env = env_fn()
 
-    hud = AvionicsHUD(width=1000, height=700)
-    screen = pygame.display.set_mode((1000, 700))
-    pygame.display.set_caption("Tesla-Style Autonomous Rocket Landing: Live Avionics HUD")
+    hud = AvionicsHUD(width=1200, height=720)
+    screen = pygame.display.set_mode((1200, 720))
+    pygame.display.set_caption("SpaceX Autonomous Rocket Landing: Live Mission Control HUD")
     clock = pygame.time.Clock()
 
-    print("\n" + "=" * 60)
-    print(" LIVE AVIONICS TELEMETRY FLIGHT VIEWER ")
+    print("\n" + "=" * 65)
+    print(" LIVE SPACEX AUTONOMOUS RECOVERY AVIONICS HUD ")
     print(" Press ESC or Close Window to exit ")
-    print("=" * 60)
+    print("=" * 65)
 
     for episode in range(1, n_episodes + 1):
-        obs, info = env.reset(seed=100 + episode)
+        obs, info = env.reset(seed=200 + episode)
         hud.reset()
         done = False
         step_idx = 0
@@ -70,14 +75,12 @@ def run_demo(
         print(f"\n--- Episode {episode}/{n_episodes} (Wind: {info.get('wind_power', 0.0):+.1f}N, Motor Eff: {info.get('thrust_scale', 1.0)*100:.0f}%) ---")
 
         while not done:
-            # Handle Pygame quit events
             for event in pygame.event.get():
                 if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                     env.close()
                     pygame.quit()
                     return
 
-            # Agent Action
             if model is not None:
                 action, _ = model.predict(obs, deterministic=True)
             else:
@@ -88,7 +91,6 @@ def run_demo(
             step_idx += 1
             done = terminated or truncated
 
-            # Grab simulation frame
             sim_rgb = env.render()
             if sim_rgb is not None:
                 composite_frame = hud.render_frame(
@@ -101,7 +103,6 @@ def run_demo(
                     env_unwrapped=env.unwrapped
                 )
                 
-                # Blit to screen
                 surf = pygame.surfarray.make_surface(np.transpose(composite_frame, (1, 0, 2)))
                 screen.blit(surf, (0, 0))
                 pygame.display.flip()
@@ -110,18 +111,95 @@ def run_demo(
 
         status = "SUCCESSFUL TOUCHDOWN" if info.get("is_safe_landing", 0) > 0 else "CRASH / ABORT"
         print(f"Episode {episode} Result: {status} | Score: {ep_reward:.1f} | Fuel Burned: {info.get('total_fuel_burned', 0.0):.3f}")
-        time.sleep(1.0)
+        time.sleep(1.2)
 
     env.close()
     pygame.quit()
     print("\nDemo finished.")
 
 
+def record_video(
+    model_path: str = "models/best_model.zip",
+    output_path: str = "rocket_landing_linkedin.mp4",
+    curriculum_level: float = 1.0,
+    fps: int = 50
+):
+    """
+    Renders and exports a high-definition 60 FPS MP4 video ready for LinkedIn!
+    """
+    from stable_baselines3 import PPO
+    import imageio
+
+    if not os.path.exists(model_path):
+        fallback = "models/rocket_ppo_final.zip"
+        if os.path.exists(fallback):
+            model_path = fallback
+        else:
+            raise FileNotFoundError(f"Model file not found at {model_path}. Train a model first!")
+
+    print(f"\nLoading trained model: {model_path}")
+    model = PPO.load(model_path)
+
+    env_fn = make_rocket_env(render_mode="rgb_array", curriculum_level=curriculum_level)
+    env = env_fn()
+
+    hud = AvionicsHUD(width=1200, height=720)
+    frames = []
+
+    print(f"\nRecording high-definition video to: {output_path}")
+    print("Simulating landing episode at 50 FPS...")
+
+    # Select seed that demonstrates a dramatic, successful landing
+    obs, info = env.reset(seed=202)
+    hud.reset()
+    done = False
+    step_idx = 0
+    ep_reward = 0.0
+
+    while not done:
+        action, _ = model.predict(obs, deterministic=True)
+        obs, reward, terminated, truncated, info = env.step(action)
+        ep_reward += reward
+        step_idx += 1
+        done = terminated or truncated
+
+        sim_rgb = env.render()
+        composite_frame = hud.render_frame(
+            sim_rgb_array=sim_rgb,
+            obs=obs,
+            action=action,
+            info=info,
+            step_idx=step_idx,
+            total_reward=ep_reward,
+            env_unwrapped=env.unwrapped
+        )
+        frames.append(composite_frame)
+
+    # Add a short hold at the end so the viewer can appreciate the touchdown
+    for _ in range(40):
+        frames.append(frames[-1])
+
+    env.close()
+
+    print(f"Captured {len(frames)} frames. Encoding MP4 video...")
+    writer = imageio.get_writer(output_path, fps=fps, quality=9)
+    for f in frames:
+        writer.append_data(f)
+    writer.close()
+
+    status = "SUCCESSFUL TOUCHDOWN" if info.get("is_safe_landing", 0) > 0 else "CRASH / ABORT"
+    print("\n" + "=" * 65)
+    print(f" VIDEO SAVED SUCCESSFULLY: {output_path} ")
+    print(f" Result: {status} | Score: {ep_reward:.1f}")
+    print(" You can directly upload this MP4 video to LinkedIn!")
+    print("=" * 65)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Tesla-Style Autonomous Rocket Landing RL System")
     parser.add_argument(
         "--mode",
-        choices=["train", "demo", "benchmark", "test"],
+        choices=["train", "demo", "record", "benchmark", "test"],
         default="demo",
         help="Execution mode"
     )
@@ -130,6 +208,7 @@ def main():
     parser.add_argument("--model", type=str, default="models/best_model.zip", help="Model checkpoint path")
     parser.add_argument("--episodes", type=int, default=5, help="Episodes for demo or evaluation")
     parser.add_argument("--difficulty", type=float, default=1.0, help="Curriculum difficulty (0.0 to 1.0)")
+    parser.add_argument("--output", type=str, default="rocket_landing_linkedin.mp4", help="Output MP4 file path for recording")
     args = parser.parse_args()
 
     if args.mode == "test":
@@ -150,6 +229,9 @@ def main():
 
     elif args.mode == "demo":
         run_demo(model_path=args.model, n_episodes=args.episodes, curriculum_level=args.difficulty)
+
+    elif args.mode == "record":
+        record_video(model_path=args.model, output_path=args.output, curriculum_level=args.difficulty)
 
     elif args.mode == "benchmark":
         from evaluate import evaluate

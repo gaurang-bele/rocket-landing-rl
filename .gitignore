@@ -14,6 +14,10 @@ models/*.zip
 *.pth
 *.pt
 
+# Media and video recordings
+*.mp4
+preview_*.png
+
 # Training logs & TensorBoard
 logs/
 runs/
