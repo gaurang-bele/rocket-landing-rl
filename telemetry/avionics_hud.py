@@ -38,52 +38,59 @@ class AvionicsHUD:
         self.font_large = pygame.font.SysFont("Consolas", 20, bold=True)
         self.font_badge = pygame.font.SysFont("Consolas", 13, bold=True)
         
+        from telemetry.rocket_renderer import RocketRenderer
+        self.rocket_renderer = RocketRenderer(viewport_w=self.sim_width, viewport_h=self.sim_height)
+
         # Trajectory history cache: list of (x_screen, y_screen)
         self.trajectory_points: List[Tuple[int, int]] = []
         self.max_points = 200
 
     def reset(self):
-        """Reset flight trajectory history."""
+        """Reset flight trajectory history and particle effects."""
         self.trajectory_points.clear()
+        self.rocket_renderer.exhaust_particles.clear()
+        self.rocket_renderer.rcs_particles.clear()
 
     def render_frame(
         self,
-        sim_rgb_array: np.ndarray,
+        sim_rgb_array: Optional[np.ndarray],
         obs: np.ndarray,
         action: np.ndarray,
         info: Dict[str, Any],
         step_idx: int,
-        total_reward: float
+        total_reward: float,
+        env_unwrapped=None
     ) -> np.ndarray:
         """
-        Takes raw simulation rgb array and telemetry variables,
-        composites them into a full HUD frame, and returns (H, W, 3) uint8 array.
+        Renders the SpaceX Falcon 9 simulation viewport and composites the Avionics HUD sidebar.
+        Returns (H, W, 3) uint8 array.
         """
         surface = pygame.Surface((self.width, self.height))
         surface.fill(self.BG_COLOR)
 
         # 1. Render Simulation Viewport (left 700x700)
-        sim_surf = pygame.surfarray.make_surface(np.transpose(sim_rgb_array, (1, 0, 2)))
-        scaled_sim = pygame.transform.smoothscale(sim_surf, (self.sim_width, self.sim_height))
-        surface.blit(scaled_sim, (0, 0))
+        if env_unwrapped is not None and hasattr(env_unwrapped, "lander") and env_unwrapped.lander is not None:
+            # Record noiseless true physical position for smooth trajectory
+            px, py = self.rocket_renderer.world_to_screen(
+                env_unwrapped.lander.position.x,
+                env_unwrapped.lander.position.y
+            )
+            self.trajectory_points.append((px, py))
+            if len(self.trajectory_points) > self.max_points:
+                self.trajectory_points.pop(0)
 
-        # Update trajectory ribbon
-        x_norm, y_norm = obs[0], obs[1]
-        # Map normalized coordinates (x in [-1, 1], y in [0, 1.4]) to simulation viewport
-        x_screen = int((x_norm + 1.0) * 0.5 * self.sim_width)
-        y_screen = int((1.4 - y_norm) / 1.4 * self.sim_height)
-        self.trajectory_points.append((x_screen, y_screen))
-        if len(self.trajectory_points) > self.max_points:
-            self.trajectory_points.pop(0)
-
-        # Draw trajectory ribbon with alpha fading
-        if len(self.trajectory_points) > 1:
-            for i in range(len(self.trajectory_points) - 1):
-                alpha = int(255 * (i / len(self.trajectory_points)))
-                p1 = self.trajectory_points[i]
-                p2 = self.trajectory_points[i + 1]
-                color = (*self.CYAN[:3], alpha)
-                pygame.draw.line(surface, self.CYAN, p1, p2, width=2)
+            # Render photorealistic SpaceX Falcon 9 rocket and drone ship
+            cinematic_surf = self.rocket_renderer.render_cinematic_world(
+                env_unwrapped=env_unwrapped,
+                action=action,
+                info=info,
+                trajectory_points=self.trajectory_points
+            )
+            surface.blit(cinematic_surf, (0, 0))
+        elif sim_rgb_array is not None:
+            sim_surf = pygame.surfarray.make_surface(np.transpose(sim_rgb_array, (1, 0, 2)))
+            scaled_sim = pygame.transform.smoothscale(sim_surf, (self.sim_width, self.sim_height))
+            surface.blit(scaled_sim, (0, 0))
 
         # 2. Render HUD Sidebar (Right 300px)
         sidebar_rect = pygame.Rect(self.sim_width, 0, self.hud_width, self.height)

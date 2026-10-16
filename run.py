@@ -97,7 +97,8 @@ def run_demo(
                     action=action,
                     info=info,
                     step_idx=step_idx,
-                    total_reward=ep_reward
+                    total_reward=ep_reward,
+                    env_unwrapped=env.unwrapped
                 )
                 
                 # Blit to screen
