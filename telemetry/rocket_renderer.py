@@ -196,81 +196,83 @@ class RocketRenderer:
         p1 = self.world_to_screen(env_unwrapped.helipad_x1, env_unwrapped.helipad_y)
         p2 = self.world_to_screen(env_unwrapped.helipad_x2, env_unwrapped.helipad_y)
 
-        deck_x = p1[0] - 16
-        deck_y = p1[1] - 6
-        deck_w = (p2[0] - p1[0]) + 32
-        deck_h = 24
+        # Top surface of the deck is EXACTLY at the physical ground line p1[1]
+        deck_y = p1[1]
+        deck_x = p1[0] - 18
+        deck_w = (p2[0] - p1[0]) + 36
+        deck_h = 30  # Heavy-duty ocean barge hull extending downwards
 
-        # 1. Water Wake / Ocean Foam around the Barge
+        # 1. Water Wake / Ocean Foam under the Barge Hull
         for wave_i in range(3):
             wave_y = deck_y + deck_h + 3 + wave_i * 4
             wave_shift = math.sin(self.frame_count * 0.08 + wave_i) * 6
-            pygame.draw.line(surf, (40, 90, 130), (deck_x - 12 + wave_shift, wave_y), (deck_x + deck_w + 12 + wave_shift, wave_y), 2)
+            pygame.draw.line(surf, (35, 80, 120), (deck_x - 14 + wave_shift, wave_y), (deck_x + deck_w + 14 + wave_shift, wave_y), 2)
 
-        # 2. Barge Hull (Heavy Steel Structure)
-        pygame.draw.rect(surf, (18, 22, 30), (deck_x, deck_y, deck_w, deck_h), border_radius=4)
+        # 2. Barge Hull (Heavy Steel Structure Extending Downward)
+        pygame.draw.rect(surf, (16, 20, 28), (deck_x, deck_y, deck_w, deck_h), border_radius=4)
         pygame.draw.rect(surf, (45, 60, 85), (deck_x, deck_y, deck_w, deck_h), width=2, border_radius=4)
 
-        # 3. Yellow/Black Industrial Caution Hazard Stripes
-        stripe_w = 24
-        # Left stripes
+        # 3. Top Deck Landing Surface (Non-Skid Steel Plating)
+        top_plate_h = 10
+        pygame.draw.rect(surf, (32, 40, 56), (deck_x + 2, deck_y, deck_w - 4, top_plate_h))
+        pygame.draw.line(surf, (70, 95, 130), (deck_x + 2, deck_y), (deck_x + deck_w - 2, deck_y), width=2)
+
+        # 4. Yellow/Black Industrial Caution Hazard Stripes
+        stripe_w = 26
+        # Left hazard zone
         pygame.draw.rect(surf, (255, 204, 0), (deck_x, deck_y, stripe_w, deck_h))
         for s in range(0, stripe_w, 6):
             pygame.draw.line(surf, (20, 24, 30), (deck_x + s, deck_y), (deck_x + s + 5, deck_y + deck_h), 2)
-        # Right stripes
+        # Right hazard zone
         pygame.draw.rect(surf, (255, 204, 0), (deck_x + deck_w - stripe_w, deck_y, stripe_w, deck_h))
         for s in range(0, stripe_w, 6):
             pygame.draw.line(surf, (20, 24, 30), (deck_x + deck_w - stripe_w + s, deck_y), (deck_x + deck_w - stripe_w + s + 5, deck_y + deck_h), 2)
 
-        # 4. Landing Target Bullseye & Center "X"
+        # 5. Landing Target Bullseye & Center "X" on the Deck Surface
         center_x = (p1[0] + p2[0]) // 2
-        center_y = deck_y + deck_h // 2
+        bullseye_y = deck_y + 5
         r_x = int(deck_w * 0.22)
-        r_y = int(deck_h * 0.40)
+        r_y = 6
 
-        # Outer Landing Ring (Perspective 3D Ellipse)
-        pygame.draw.ellipse(surf, (255, 204, 0), (center_x - r_x, center_y - r_y, r_x * 2, r_y * 2), width=2)
-        # Inner Circle
-        pygame.draw.ellipse(surf, (255, 220, 80), (center_x - r_x // 2, center_y - r_y // 2, r_x, r_y), width=1)
+        # Perspective Ellipse resting flush on the deck
+        pygame.draw.ellipse(surf, (255, 204, 0), (center_x - r_x, bullseye_y - r_y, r_x * 2, r_y * 2), width=2)
+        pygame.draw.ellipse(surf, (255, 220, 80), (center_x - r_x // 2, bullseye_y - r_y // 2, r_x, r_y), width=1)
 
         # Center Landing "X"
-        x_sz_x = 9
-        x_sz_y = 5
-        pygame.draw.line(surf, (255, 255, 255), (center_x - x_sz_x, center_y - x_sz_y), (center_x + x_sz_x, center_y + x_sz_y), width=2)
-        pygame.draw.line(surf, (255, 255, 255), (center_x - x_sz_x, center_y + x_sz_y), (center_x + x_sz_x, center_y - x_sz_y), width=2)
+        pygame.draw.line(surf, (255, 255, 255), (center_x - 7, bullseye_y - 3), (center_x + 7, bullseye_y + 3), width=2)
+        pygame.draw.line(surf, (255, 255, 255), (center_x - 7, bullseye_y + 3), (center_x + 7, bullseye_y - 3), width=2)
 
-        # 5. Telemetry Radio Beacon Masts
+        # 6. Telemetry Radio Beacon Masts
         mast_h = 28
         # Port mast (Red Beacon)
-        pygame.draw.line(surf, (140, 160, 180), (deck_x + 5, deck_y), (deck_x + 5, deck_y - mast_h), width=2)
-        pygame.draw.circle(surf, (255, 40, 40), (deck_x + 5, deck_y - mast_h), 3)
+        pygame.draw.line(surf, (140, 160, 180), (deck_x + 6, deck_y), (deck_x + 6, deck_y - mast_h), width=2)
+        pygame.draw.circle(surf, (255, 40, 40), (deck_x + 6, deck_y - mast_h), 3)
         # Starboard mast (Green Beacon)
-        pygame.draw.line(surf, (140, 160, 180), (deck_x + deck_w - 5, deck_y), (deck_x + deck_w - 5, deck_y - mast_h), width=2)
-        pygame.draw.circle(surf, (40, 255, 100), (deck_x + deck_w - 5, deck_y - mast_h), 3)
+        pygame.draw.line(surf, (140, 160, 180), (deck_x + deck_w - 6, deck_y), (deck_x + deck_w - 6, deck_y - mast_h), width=2)
+        pygame.draw.circle(surf, (40, 255, 100), (deck_x + deck_w - 6, deck_y - mast_h), 3)
 
-        # 6. Deck Stencil Label: "ASDS: A SHORTFALL OF GRAVITAS"
+        # 7. Drone Ship Name Stenciled on Front Hull Face (Below the Deck)
         font_stencil = pygame.font.SysFont("Consolas", 10, bold=True)
-        lbl = font_stencil.render("A SHORTFALL OF GRAVITAS", True, (120, 140, 165))
-        surf.blit(lbl, (center_x - lbl.get_width() // 2, deck_y + deck_h - 11))
+        lbl = font_stencil.render("A SHORTFALL OF GRAVITAS", True, (130, 150, 175))
+        surf.blit(lbl, (center_x - lbl.get_width() // 2, deck_y + 14))
 
-        # 7. Dynamic Ground Flame Reflection Glow
+        # 8. Ground Flame Reflection Glow (Flat on the Deck Floor)
         if hasattr(env_unwrapped, "lander") and env_unwrapped.lander is not None:
             l_pos = env_unwrapped.lander.position
             l_px, l_py = self.world_to_screen(l_pos.x, l_pos.y)
             dist_to_deck = deck_y - l_py
-            if 0 < dist_to_deck < 220:
-                glow_intensity = max(0.0, 1.0 - (dist_to_deck / 220.0))
-                glow_rad_x = int(60 + glow_intensity * 70)
-                glow_rad_y = int(15 + glow_intensity * 25)
-                glow_alpha = int(glow_intensity * 140)
+            if 0 < dist_to_deck < 200:
+                glow_intensity = max(0.0, 1.0 - (dist_to_deck / 200.0))
+                glow_rad_x = int(45 + glow_intensity * 55)
+                glow_alpha = int(glow_intensity * 120)
 
-                glow_surf = pygame.Surface((glow_rad_x * 2, glow_rad_y * 2), pygame.SRCALPHA)
+                glow_surf = pygame.Surface((glow_rad_x * 2, 14), pygame.SRCALPHA)
                 pygame.draw.ellipse(
                     glow_surf,
-                    (255, 120, 20, glow_alpha),
-                    (0, 0, glow_rad_x * 2, glow_rad_y * 2)
+                    (255, 140, 20, glow_alpha),
+                    (0, 0, glow_rad_x * 2, 14)
                 )
-                surf.blit(glow_surf, (center_x - glow_rad_x, deck_y - glow_rad_y // 2))
+                surf.blit(glow_surf, (center_x - glow_rad_x, deck_y - 5))
 
     def _draw_trajectory(self, surf: pygame.Surface, trajectory_points: List[Tuple[int, int]]):
         """Draws sleek anti-aliased neon cyan trajectory ribbon."""
@@ -357,11 +359,19 @@ class RocketRenderer:
 
         center_px, center_py = self.world_to_screen(pos.x, pos.y)
 
-        # Proportions: 74px tall x 15px wide (authentic booster silhouette)
-        rocket_h = 74
-        rocket_w = 15
-        half_w = rocket_w / 2.0
-        half_h = rocket_h / 2.0
+        # Aerospace proportions aligned to exact Box2D physical center of mass
+        # At touchdown, physical ground is exactly +18.5px below center_py
+        half_w = 7.5
+        foot_y = 18.5  # Footpads sit 100% flush on the launchpad deck at touchdown
+        nozzle_bot_y = 12.0  # Merlin engine nozzle sits 6.5px above deck
+        body_bot_y = 7.0
+        body_top_y = -56.0
+        nose_tip_y = -68.0
+        interstage_top = -48.0
+        interstage_bot = -40.0
+        fin_y = -44.0
+        leg_hinge_y = 3.0
+        leg_span = 26.0
 
         cos_a = math.cos(-angle)
         sin_a = math.sin(-angle)
@@ -376,89 +386,95 @@ class RocketRenderer:
         # -----------------------------------------------------------------
         main_throttle = np.clip((action[0] + 1.0) / 2.0 if action[0] > 0 else 0.0, 0.0, 1.0)
         if main_throttle > 0:
-            flame_len = 45 + int(main_throttle * 55) + random.randint(-4, 4)
-            flame_w = 14 + int(main_throttle * 8)
+            # Measure clearance to deck so flame compresses near ground
+            deck_screen_y = self.world_to_screen(0, env_unwrapped.helipad_y)[1] if hasattr(env_unwrapped, "helipad_y") else 548
+            dist_to_deck = max(0, deck_screen_y - center_py)
+            
+            raw_flame_len = 35 + int(main_throttle * 45) + random.randint(-3, 3)
+            # Compress flame if close to ground
+            flame_len = min(raw_flame_len, max(8, dist_to_deck - 6))
+            flame_w = 13 + int(main_throttle * 6)
 
-            nozzle_pt = rotate_pt(0, half_h + 3)
-            flame_tip = rotate_pt(0, half_h + flame_len)
-            flame_l = rotate_pt(-flame_w / 2, half_h + 8)
-            flame_r = rotate_pt(flame_w / 2, half_h + 8)
+            nozzle_pt = rotate_pt(0, nozzle_bot_y)
+            flame_tip = rotate_pt(0, nozzle_bot_y + flame_len)
+            flame_l = rotate_pt(-flame_w / 2, nozzle_bot_y + min(8, flame_len * 0.3))
+            flame_r = rotate_pt(flame_w / 2, nozzle_bot_y + min(8, flame_len * 0.3))
 
-            # Volumetric Flame Bloom (Glowing Radial Halo)
+            # Volumetric Flame Bloom (Glowing Radial Halo around retro plume)
             halo_rad = int(flame_len * 0.7)
-            halo_surf = pygame.Surface((halo_rad * 2, halo_rad * 2), pygame.SRCALPHA)
-            pygame.draw.circle(halo_surf, (255, 120, 20, 45), (halo_rad, halo_rad), halo_rad)
-            surf.blit(halo_surf, (nozzle_pt[0] - halo_rad, nozzle_pt[1] - halo_rad // 2))
+            if halo_rad > 4:
+                halo_surf = pygame.Surface((halo_rad * 2, halo_rad * 2), pygame.SRCALPHA)
+                pygame.draw.circle(halo_surf, (255, 120, 20, 40), (halo_rad, halo_rad), halo_rad)
+                surf.blit(halo_surf, (nozzle_pt[0] - halo_rad, nozzle_pt[1] - halo_rad // 3))
 
             # Layer 1: Outer Turbulent Orange/Red Plume
             pygame.draw.polygon(surf, (255, 60, 0), [nozzle_pt, flame_l, flame_tip, flame_r])
 
             # Layer 2: Mid Supersonic Yellow Core
             mid_len = int(flame_len * 0.65)
-            mid_w = int(flame_w * 0.6)
-            mid_tip = rotate_pt(0, half_h + mid_len)
-            mid_l = rotate_pt(-mid_w / 2, half_h + 5)
-            mid_r = rotate_pt(mid_w / 2, half_h + 5)
+            mid_w = int(flame_w * 0.58)
+            mid_tip = rotate_pt(0, nozzle_bot_y + mid_len)
+            mid_l = rotate_pt(-mid_w / 2, nozzle_bot_y + min(5, mid_len * 0.3))
+            mid_r = rotate_pt(mid_w / 2, nozzle_bot_y + min(5, mid_len * 0.3))
             pygame.draw.polygon(surf, (255, 215, 0), [nozzle_pt, mid_l, mid_tip, mid_r])
 
             # Layer 3: Inner White-Hot Combustion Throat
             core_len = int(flame_len * 0.35)
-            core_w = int(flame_w * 0.32)
-            core_tip = rotate_pt(0, half_h + core_len)
-            core_l = rotate_pt(-core_w / 2, half_h + 3)
-            core_r = rotate_pt(core_w / 2, half_h + 3)
+            core_w = int(flame_w * 0.30)
+            core_tip = rotate_pt(0, nozzle_bot_y + core_len)
+            core_l = rotate_pt(-core_w / 2, nozzle_bot_y + 2)
+            core_r = rotate_pt(core_w / 2, nozzle_bot_y + 2)
             pygame.draw.polygon(surf, (255, 255, 255), [nozzle_pt, core_l, core_tip, core_r])
 
-            # Layer 4: Mach Shock Diamonds (Diamond diamonds along supersonic axis)
-            for d_idx in range(1, 3):
-                d_dist = half_h + (flame_len * 0.28 * d_idx)
-                d_sz = 3
-                d_pts = [
-                    rotate_pt(0, d_dist - d_sz),
-                    rotate_pt(d_sz, d_dist),
-                    rotate_pt(0, d_dist + d_sz),
-                    rotate_pt(-d_sz, d_dist)
-                ]
-                pygame.draw.polygon(surf, (220, 240, 255), d_pts)
+            # Layer 4: Mach Shock Diamonds along supersonic axis
+            if flame_len > 25:
+                for d_idx in range(1, 3):
+                    d_dist = nozzle_bot_y + (flame_len * 0.28 * d_idx)
+                    d_sz = 3
+                    d_pts = [
+                        rotate_pt(0, d_dist - d_sz),
+                        rotate_pt(d_sz, d_dist),
+                        rotate_pt(0, d_dist + d_sz),
+                        rotate_pt(-d_sz, d_dist)
+                    ]
+                    pygame.draw.polygon(surf, (220, 240, 255), d_pts)
 
             # Spawn Exhaust Smoke Particles
-            if len(self.exhaust_particles) < 90:
-                p_vx = -sin_a * (3.5 + random.uniform(0, 2)) + random.uniform(-0.6, 0.6)
-                p_vy = cos_a * (3.5 + random.uniform(0, 2)) + random.uniform(-0.6, 0.6)
+            if len(self.exhaust_particles) < 80:
+                p_vx = -sin_a * (3.0 + random.uniform(0, 2)) + random.uniform(-0.5, 0.5)
+                p_vy = cos_a * (3.0 + random.uniform(0, 2)) + random.uniform(-0.5, 0.5)
                 self.exhaust_particles.append(
                     Particle(
                         x=flame_tip[0],
                         y=flame_tip[1],
                         vx=p_vx,
                         vy=p_vy,
-                        ttl=random.uniform(0.7, 1.3),
+                        ttl=random.uniform(0.6, 1.2),
                         color=(255, 140, 30),
-                        size=random.uniform(5.0, 9.0)
+                        size=random.uniform(4.0, 8.0)
                     )
                 )
 
-            # Ground Dust Billows (Kick up when approaching the deck < 70m)
-            alt_agl = pos.y - 3.33  # Approx deck altitude
-            if 0 < alt_agl < 3.0 and len(self.dust_particles) < 60:
-                # Left billow
+            # Ground Dust Billows when retro plume impinges on deck
+            alt_agl = pos.y - (env_unwrapped.helipad_y if hasattr(env_unwrapped, "helipad_y") else 3.33)
+            if 0 < alt_agl < 2.5 and len(self.dust_particles) < 60:
                 self.dust_particles.append(
                     Particle(
-                        x=flame_tip[0],
-                        y=flame_tip[1],
-                        vx=-random.uniform(2.5, 5.0),
-                        vy=-random.uniform(0.2, 1.0),
+                        x=nozzle_pt[0],
+                        y=deck_screen_y,
+                        vx=-random.uniform(3.0, 6.0),
+                        vy=-random.uniform(0.2, 0.8),
                         ttl=random.uniform(0.6, 1.2),
                         color=(190, 205, 225),
                         size=random.uniform(6.0, 12.0)
                     )
                 )
-                # Right billow
                 self.dust_particles.append(
                     Particle(
-                        x=flame_tip[0],
-                        y=flame_tip[1],
-                        vx=random.uniform(2.5, 5.0),
-                        vy=-random.uniform(0.2, 1.0),
+                        x=nozzle_pt[0],
+                        y=deck_screen_y,
+                        vx=random.uniform(3.0, 6.0),
+                        vy=-random.uniform(0.2, 0.8),
                         ttl=random.uniform(0.6, 1.2),
                         color=(190, 205, 225),
                         size=random.uniform(6.0, 12.0)
@@ -469,26 +485,23 @@ class RocketRenderer:
         # B. COLD-GAS RCS ATTITUDE THRUSTERS
         # -----------------------------------------------------------------
         side_throttle = float(action[1])
-        rcs_y = -half_h + 14
+        rcs_y = body_top_y + 12
 
-        # Right Thruster Blast (Pushes rocket left)
         if side_throttle < -0.25:
-            burst_len = int(abs(side_throttle) * 24)
+            burst_len = int(abs(side_throttle) * 22)
             rcs_orig = rotate_pt(half_w, rcs_y)
             rcs_tip = rotate_pt(half_w + burst_len, rcs_y)
             pygame.draw.line(surf, (220, 245, 255), rcs_orig, rcs_tip, width=3)
-            if len(self.rcs_particles) < 50:
+            if len(self.rcs_particles) < 40:
                 self.rcs_particles.append(
                     Particle(rcs_tip[0], rcs_tip[1], cos_a * 2.5, sin_a * 2.5, 0.4, (220, 245, 255), 3.0)
                 )
-
-        # Left Thruster Blast (Pushes rocket right)
         elif side_throttle > 0.25:
-            burst_len = int(side_throttle * 24)
+            burst_len = int(side_throttle * 22)
             rcs_orig = rotate_pt(-half_w, rcs_y)
             rcs_tip = rotate_pt(-half_w - burst_len, rcs_y)
             pygame.draw.line(surf, (220, 245, 255), rcs_orig, rcs_tip, width=3)
-            if len(self.rcs_particles) < 50:
+            if len(self.rcs_particles) < 40:
                 self.rcs_particles.append(
                     Particle(rcs_tip[0], rcs_tip[1], -cos_a * 2.5, -sin_a * 2.5, 0.4, (220, 245, 255), 3.0)
                 )
@@ -496,11 +509,10 @@ class RocketRenderer:
         # -----------------------------------------------------------------
         # C. FALCON 9 CYLINDRICAL BOOSTER FUSELAGE
         # -----------------------------------------------------------------
-        # Main Cylinder
-        p_tl = rotate_pt(-half_w, -half_h + 10)
-        p_tr = rotate_pt(half_w, -half_h + 10)
-        p_br = rotate_pt(half_w, half_h)
-        p_bl = rotate_pt(-half_w, half_h)
+        p_tl = rotate_pt(-half_w, body_top_y)
+        p_tr = rotate_pt(half_w, body_top_y)
+        p_br = rotate_pt(half_w, body_bot_y)
+        p_bl = rotate_pt(-half_w, body_bot_y)
         body_poly = [p_tl, p_tr, p_br, p_bl]
 
         # Glossy aerospace white with anti-aliasing
@@ -508,78 +520,65 @@ class RocketRenderer:
         gfxdraw.aapolygon(surf, body_poly, (200, 212, 230))
 
         # Carbon-Fiber Black Interstage Band (Upper Stage Interface)
-        b_tl = rotate_pt(-half_w, -half_h + 17)
-        b_tr = rotate_pt(half_w, -half_h + 17)
-        b_br = rotate_pt(half_w, -half_h + 24)
-        b_bl = rotate_pt(-half_w, -half_h + 24)
+        b_tl = rotate_pt(-half_w, interstage_top)
+        b_tr = rotate_pt(half_w, interstage_top)
+        b_br = rotate_pt(half_w, interstage_bot)
+        b_bl = rotate_pt(-half_w, interstage_bot)
         pygame.draw.polygon(surf, (30, 34, 42), [b_tl, b_tr, b_br, b_bl])
 
         # Conical Black Aerodynamic Nosecone / Fairing
-        nose_tip = rotate_pt(0, -half_h - 7)
-        nose_l = rotate_pt(-half_w + 1, -half_h + 10)
-        nose_r = rotate_pt(half_w - 1, -half_h + 10)
+        nose_tip = rotate_pt(0, nose_tip_y)
+        nose_l = rotate_pt(-half_w + 1, body_top_y)
+        nose_r = rotate_pt(half_w - 1, body_top_y)
         pygame.draw.polygon(surf, (40, 46, 58), [nose_tip, nose_r, nose_l])
         gfxdraw.aapolygon(surf, [nose_tip, nose_r, nose_l], (70, 80, 100))
 
-        # Cylindrical 3D Specular Highlight (Reflection bar along booster length)
-        spec_top = rotate_pt(-half_w + 3, -half_h + 10)
-        spec_bot = rotate_pt(-half_w + 3, half_h)
+        # Cylindrical 3D Specular Highlight
+        spec_top = rotate_pt(-half_w + 3, body_top_y)
+        spec_bot = rotate_pt(-half_w + 3, body_bot_y)
         pygame.draw.line(surf, (255, 255, 255), spec_top, spec_bot, width=2)
 
         # Falcon Engine Bell (Superheated Inconel / Niobium Nozzle)
         nozzle_color = (255, 100, 30) if main_throttle > 0 else (45, 48, 56)
-        noz_l = rotate_pt(-5, half_h)
-        noz_r = rotate_pt(5, half_h)
-        noz_br = rotate_pt(4, half_h + 6)
-        noz_bl = rotate_pt(-4, half_h + 6)
+        noz_l = rotate_pt(-5, body_bot_y)
+        noz_r = rotate_pt(5, body_bot_y)
+        noz_br = rotate_pt(4, nozzle_bot_y)
+        noz_bl = rotate_pt(-4, nozzle_bot_y)
         pygame.draw.polygon(surf, nozzle_color, [noz_l, noz_r, noz_br, noz_bl])
 
         # -----------------------------------------------------------------
         # D. TITANIUM GRID FINS (ACTIVE STEERING WITH RCS)
         # -----------------------------------------------------------------
-        fin_y = -half_h + 12
         fin_steer = float(action[1]) * 0.25
 
-        # Left Grid Fin (Waffle Grid pattern)
+        # Left Grid Fin
         fl_base1 = rotate_pt(-half_w, fin_y)
-        fl_tip1 = rotate_pt(-half_w - 11, fin_y - 2 + int(fin_steer * 8))
-        fl_tip2 = rotate_pt(-half_w - 11, fin_y + 5 + int(fin_steer * 8))
+        fl_tip1 = rotate_pt(-half_w - 10, fin_y - 2 + int(fin_steer * 8))
+        fl_tip2 = rotate_pt(-half_w - 10, fin_y + 5 + int(fin_steer * 8))
         fl_base2 = rotate_pt(-half_w, fin_y + 5)
         pygame.draw.polygon(surf, (24, 28, 36), [fl_base1, fl_tip1, fl_tip2, fl_base2])
         pygame.draw.polygon(surf, (90, 110, 140), [fl_base1, fl_tip1, fl_tip2, fl_base2], width=1)
-        # Waffle grid cross-rib
-        fl_mid1 = rotate_pt(-half_w - 5, fin_y)
-        fl_mid2 = rotate_pt(-half_w - 5, fin_y + 4)
-        pygame.draw.line(surf, (90, 110, 140), fl_mid1, fl_mid2, width=1)
 
         # Right Grid Fin
         fr_base1 = rotate_pt(half_w, fin_y)
-        fr_tip1 = rotate_pt(half_w + 11, fin_y - 2 - int(fin_steer * 8))
-        fr_tip2 = rotate_pt(half_w + 11, fin_y + 5 - int(fin_steer * 8))
+        fr_tip1 = rotate_pt(half_w + 10, fin_y - 2 - int(fin_steer * 8))
+        fr_tip2 = rotate_pt(half_w + 10, fin_y + 5 - int(fin_steer * 8))
         fr_base2 = rotate_pt(half_w, fin_y + 5)
         pygame.draw.polygon(surf, (24, 28, 36), [fr_base1, fr_tip1, fr_tip2, fr_base2])
         pygame.draw.polygon(surf, (90, 110, 140), [fr_base1, fr_tip1, fr_tip2, fr_base2], width=1)
-        # Waffle grid cross-rib
-        fr_mid1 = rotate_pt(half_w + 5, fin_y)
-        fr_mid2 = rotate_pt(half_w + 5, fin_y + 4)
-        pygame.draw.line(surf, (90, 110, 140), fr_mid1, fr_mid2, width=1)
 
         # -----------------------------------------------------------------
-        # E. ARTICULATED CARBON-FIBER LANDING LEGS
+        # E. ARTICULATED CARBON-FIBER LANDING LEGS (REST FLUSH ON DECK)
         # -----------------------------------------------------------------
-        leg_hinge_y = half_h - 6
-        leg_span = 26
-        foot_y = half_h + 12
-
         # Left Leg Assembly
         leg_l_h = rotate_pt(-half_w + 2, leg_hinge_y)
         leg_l_f = rotate_pt(-half_w - leg_span, foot_y)
-        leg_l_piston = rotate_pt(-half_w + 2, leg_hinge_y + 10)
+        leg_l_piston = rotate_pt(-half_w + 2, leg_hinge_y + 6)
         # Main carbon strut
         pygame.draw.line(surf, (25, 30, 40), leg_l_h, leg_l_f, width=3)
         # Silver pneumatic piston
         pygame.draw.line(surf, (170, 185, 205), leg_l_piston, leg_l_f, width=2)
-        # Foot pad
+        # Foot pad resting flat on launchpad deck
         foot_l_1 = rotate_pt(-half_w - leg_span - 5, foot_y)
         foot_l_2 = rotate_pt(-half_w - leg_span + 5, foot_y)
         pygame.draw.line(surf, (15, 18, 22), foot_l_1, foot_l_2, width=3)
@@ -587,19 +586,19 @@ class RocketRenderer:
         # Right Leg Assembly
         leg_r_h = rotate_pt(half_w - 2, leg_hinge_y)
         leg_r_f = rotate_pt(half_w + leg_span, foot_y)
-        leg_r_piston = rotate_pt(half_w - 2, leg_hinge_y + 10)
+        leg_r_piston = rotate_pt(half_w - 2, leg_hinge_y + 6)
         # Main carbon strut
         pygame.draw.line(surf, (25, 30, 40), leg_r_h, leg_r_f, width=3)
         # Silver pneumatic piston
         pygame.draw.line(surf, (170, 185, 205), leg_r_piston, leg_r_f, width=2)
-        # Foot pad
+        # Foot pad resting flat on launchpad deck
         foot_r_1 = rotate_pt(half_w + leg_span - 5, foot_y)
         foot_r_2 = rotate_pt(half_w + leg_span + 5, foot_y)
         pygame.draw.line(surf, (15, 18, 22), foot_r_1, foot_r_2, width=3)
 
         # Flashing Green Navigation Strobe
         if (self.frame_count // 12) % 2 == 0:
-            strobe_pt = rotate_pt(0, -half_h + 4)
+            strobe_pt = rotate_pt(0, body_top_y + 4)
             pygame.draw.circle(surf, (0, 255, 136), strobe_pt, 2)
 
     def _trigger_touchdown_fx(self, surf: pygame.Surface, env_unwrapped):
