@@ -9,14 +9,18 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# PyTorch & Model checkpoints (avoid pushing large binaries to git)
+# PyTorch & Model checkpoints (track best_model.zip, ignore step checkpoints)
 models/*.zip
+!models/best_model.zip
 *.pth
 *.pt
 
 # Media and video recordings
 *.mp4
+!rocket_landing_linkedin.mp4
 preview_*.png
+!assets/
+!assets/**
 
 # Training logs & TensorBoard
 logs/
