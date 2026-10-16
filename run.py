@@ -121,11 +121,12 @@ def run_demo(
 def record_video(
     model_path: str = "models/best_model.zip",
     output_path: str = "rocket_landing_linkedin.mp4",
+    n_episodes: int = 3,
     curriculum_level: float = 1.0,
     fps: int = 50
 ):
     """
-    Renders and exports a high-definition 60 FPS MP4 video ready for LinkedIn!
+    Renders and exports a high-definition 50 FPS MP4 video ready for LinkedIn!
     """
     from stable_baselines3 import PPO
     import imageio
@@ -146,52 +147,61 @@ def record_video(
     hud = AvionicsHUD(width=1200, height=720)
     frames = []
 
-    print(f"\nRecording high-definition video to: {output_path}")
-    print("Simulating landing episode at 50 FPS...")
+    print(f"\nRecording high-definition video ({n_episodes} episodes) to: {output_path}")
+    print("Simulating landing sequence at 50 FPS...")
 
-    # Select seed that demonstrates a dramatic, successful landing
-    obs, info = env.reset(seed=202)
-    hud.reset()
-    done = False
-    step_idx = 0
-    ep_reward = 0.0
+    # Seeds selected for diverse wind gusts, approach angles, and smooth hoverslam landings
+    diverse_seeds = [202, 105, 303, 404, 505, 606, 707, 808]
 
-    while not done:
-        action, _ = model.predict(obs, deterministic=True)
-        obs, reward, terminated, truncated, info = env.step(action)
-        ep_reward += reward
-        step_idx += 1
-        done = terminated or truncated
+    for ep in range(n_episodes):
+        seed = diverse_seeds[ep % len(diverse_seeds)]
+        obs, info = env.reset(seed=seed)
+        hud.reset()
+        done = False
+        step_idx = 0
+        ep_reward = 0.0
 
-        sim_rgb = env.render()
-        composite_frame = hud.render_frame(
-            sim_rgb_array=sim_rgb,
-            obs=obs,
-            action=action,
-            info=info,
-            step_idx=step_idx,
-            total_reward=ep_reward,
-            env_unwrapped=env.unwrapped
-        )
-        frames.append(composite_frame)
+        print(f"  -> Recording Episode {ep + 1}/{n_episodes} (Seed: {seed})...")
 
-    # Add a short hold at the end so the viewer can appreciate the touchdown
-    for _ in range(40):
-        frames.append(frames[-1])
+        while not done:
+            action, _ = model.predict(obs, deterministic=True)
+            obs, reward, terminated, truncated, info = env.step(action)
+            ep_reward += reward
+            step_idx += 1
+            done = terminated or truncated
+
+            sim_rgb = env.render()
+            composite_frame = hud.render_frame(
+                sim_rgb_array=sim_rgb,
+                obs=obs,
+                action=action,
+                info=info,
+                step_idx=step_idx,
+                total_reward=ep_reward,
+                env_unwrapped=env.unwrapped
+            )
+            frames.append(composite_frame)
+
+        status = "SUCCESSFUL TOUCHDOWN" if info.get("is_safe_landing", 0) > 0 else "CRASH / ABORT"
+        print(f"     Episode {ep + 1} finished: {status} | Score: {ep_reward:.1f}")
+
+        # Add a pause at touchdown so viewers can appreciate the landing
+        hold_frames = 35 if ep < n_episodes - 1 else 50
+        for _ in range(hold_frames):
+            frames.append(frames[-1])
 
     env.close()
 
-    print(f"Captured {len(frames)} frames. Encoding MP4 video...")
+    print(f"\nCaptured {len(frames)} total frames ({len(frames)/fps:.1f} seconds). Encoding MP4 video...")
     writer = imageio.get_writer(output_path, fps=fps, quality=9)
     for f in frames:
         writer.append_data(f)
     writer.close()
 
-    status = "SUCCESSFUL TOUCHDOWN" if info.get("is_safe_landing", 0) > 0 else "CRASH / ABORT"
     print("\n" + "=" * 65)
     print(f" VIDEO SAVED SUCCESSFULLY: {output_path} ")
-    print(f" Result: {status} | Score: {ep_reward:.1f}")
-    print(" You can directly upload this MP4 video to LinkedIn!")
+    print(f" Duration: {len(frames)/fps:.1f}s | Resolution: 1200x720 | FPS: {fps}")
+    print(" Ready to upload directly to LinkedIn!")
     print("=" * 65)
 
 
@@ -206,7 +216,7 @@ def main():
     parser.add_argument("--timesteps", type=int, default=train_cfg.total_timesteps, help="Timesteps for training")
     parser.add_argument("--envs", type=int, default=train_cfg.num_envs, help="Parallel environments")
     parser.add_argument("--model", type=str, default="models/best_model.zip", help="Model checkpoint path")
-    parser.add_argument("--episodes", type=int, default=5, help="Episodes for demo or evaluation")
+    parser.add_argument("--episodes", type=int, default=3, help="Episodes for demo, evaluation, or recording")
     parser.add_argument("--difficulty", type=float, default=1.0, help="Curriculum difficulty (0.0 to 1.0)")
     parser.add_argument("--output", type=str, default="rocket_landing_linkedin.mp4", help="Output MP4 file path for recording")
     args = parser.parse_args()
@@ -231,7 +241,12 @@ def main():
         run_demo(model_path=args.model, n_episodes=args.episodes, curriculum_level=args.difficulty)
 
     elif args.mode == "record":
-        record_video(model_path=args.model, output_path=args.output, curriculum_level=args.difficulty)
+        record_video(
+            model_path=args.model,
+            output_path=args.output,
+            n_episodes=args.episodes,
+            curriculum_level=args.difficulty
+        )
 
     elif args.mode == "benchmark":
         from evaluate import evaluate
